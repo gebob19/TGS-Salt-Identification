@@ -176,12 +176,17 @@ def ResNet50Decode(img_input, concat_layers):
     x = convT_block(x, 3, [128, 128, 512], stage=3, block='a_2')
     x = identity_block(x, 3, [128, 128, 512], stage=3, block='b')
     x = identity_block(x, 3, [128, 128, 512], stage=3, block='c')
+    x = identity_block(x, 3, [128, 128, 512], stage=3, block='d')
     
     x = trim_concat(x, concat2)
 
     x = convT_block(x, 3, [256, 256, 1024], stage=4, block='a')
+    
     x = identity_block(x, 3, [256, 256, 1024], stage=4, block='b')
     x = identity_block(x, 3, [256, 256, 1024], stage=4, block='c')
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='d')
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='e')
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='f')
     
     x = trim_concat(x, concat3)
     
