@@ -11,7 +11,7 @@ import tensorflow as tf
 from keras.callbacks import ReduceLROnPlateau, ModelCheckpoint, EarlyStopping
 from keras.preprocessing.image import ImageDataGenerator
 
-from losses import dice_loss
+from losses import dice_loss, bce_logdice_loss, bce_dice_loss
 from models import linknet
 from helpers import get_data, TrainValTensorBoard
 
@@ -24,7 +24,7 @@ K.set_session(sess)
 # In[17]:
 
 
-data_path = '../data/proc-data'
+data_path = 'data/proccessed-data/'
 
 xtrain, xval, ytrain, yval, dtrain, dval, idtrain, idval = get_data(data_path)
 
@@ -32,9 +32,9 @@ xtrain, xval, ytrain, yval, dtrain, dval, idtrain, idval = get_data(data_path)
 # In[25]:
 
 
-lr = 1e-2
-BATCH_SIZE = 5
-EPOCHS = 1
+lr = 3e-5
+BATCH_SIZE = 115
+EPOCHS = 100
 
 # dim based off the linknet paper
 H, W, C = 256, 128, 1
@@ -62,9 +62,9 @@ lr_plat = ReduceLROnPlateau(monitor='val_dice_coef',
                                min_delta=1e-4,
                                mode='max')
 early_stop = EarlyStopping(monitor='val_dice_coef',
-                           patience=10,
+                           patience=20,
                            verbose=1,
-                           min_delta=1e-4,
+                           min_delta=1e-6,
                            mode='max')
 m_checkpoint = ModelCheckpoint(monitor='val_dice_coef',
                              filepath='model_weights.hdf5',
