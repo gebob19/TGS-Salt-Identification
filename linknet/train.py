@@ -15,14 +15,14 @@ from losses import dice_loss, bce_logdice_loss, bce_dice_loss
 from models import linknet
 from helpers import get_data, TrainValTensorBoard
 
-get_ipython().run_line_magic('load_ext', 'autoreload')
-get_ipython().run_line_magic('autoreload', '2')
-
+from keras import backend as K
+sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, device_count = {'CPU' : 16, 'GPU' : 1}))
+K.set_session(sess)
 
 # In[26]:
 
 
-data_path = '../data/processed-data'
+data_path = 'data/proccessed-data'
 
 xtrain, xval, ytrain, yval, dtrain, dval, idtrain, idval = get_data(data_path)
 
@@ -30,17 +30,14 @@ xtrain, xval, ytrain, yval, dtrain, dval, idtrain, idval = get_data(data_path)
 # In[52]:
 
 
-lr = 1e-2
-BATCH_SIZE = 5
-EPOCHS = 1
+lr = 1e-4
+BATCH_SIZE = 128
+EPOCHS = 100
 
 # dim based off the linknet paper
 H, W, C = 256, 256, 1
 
-model = linknet((H, W, C), lr, bce_dice_loss)
-
-
-# In[53]:
+model = linknet((H, W, C), lr, dice_loss)
 
 
 # https://github.com/keras-team/keras/issues/3386

@@ -85,7 +85,7 @@ def linknet(input_shape, learing_rate, loss):
     x = init_block(input_img)
 
     e1, e2, e3, e4 = encoder(x)
-    x = Multiply()([x, depth_input])
+    x = add([x, depth_input])
     x = decoder(e1, e2, e3, e4)
 
     y_pred = output_block(x)
