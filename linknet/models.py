@@ -1,6 +1,6 @@
 from keras.layers import Input, Conv2D, Activation, BatchNormalization, add, \
                          MaxPool2D, GlobalAveragePooling2D, Dense, \
-                         Conv2DTranspose, Cropping2D, Lambda
+                         Conv2DTranspose, Cropping2D, Lambda, Multiply
 from keras import Model
 from keras.optimizers import Adam
  
@@ -15,24 +15,24 @@ def init_block(input_img):
 def encode_block(input_tensor, filters, ksize=(3, 3)):
     f_in, f_out = filters
     
-    x = Conv2D(f_out, (1, 1), strides=(2, 2), padding='same')(input_tensor)
+    x = Conv2D(f_out, (1, 1), strides=(2, 2), padding='same', kernel_initializer='he_normal')(input_tensor)
     x = BatchNormalization(axis=3)(x)
     x = Activation('relu')(x)
     
-    x = Conv2D(f_out, ksize, strides=(1, 1), padding='same')(x)
+    x = Conv2D(f_out, ksize, strides=(1, 1), padding='same', kernel_initializer='he_normal')(x)
     x = BatchNormalization(axis=3)(x)
     
-    shortcut = Conv2D(f_out, (1, 1), strides=(2, 2), padding='same')(input_tensor)
+    shortcut = Conv2D(f_out, (1, 1), strides=(2, 2), padding='same', kernel_initializer='he_normal')(input_tensor)
     shortcut = BatchNormalization(axis=3)(shortcut)
     
     x = add([x, shortcut])
     ec1 = Activation('relu')(x)
     
-    x = Conv2D(f_out, ksize, strides=(1, 1), padding='same')(ec1)
+    x = Conv2D(f_out, ksize, strides=(1, 1), padding='same', kernel_initializer='he_normal')(ec1)
     x = BatchNormalization(axis=3)(x)
     x = Activation('relu')(x)
     
-    x = Conv2D(f_out, ksize, strides=(1, 1), padding='same')(x)
+    x = Conv2D(f_out, ksize, strides=(1, 1), padding='same', kernel_initializer='he_normal')(x)
     x = BatchNormalization(axis=3)(x)
     
     x = add([x, ec1])
@@ -49,10 +49,10 @@ def encoder(input_img):
 
 def decode_block(input_tensor, fsizes, ksize=(3, 3)):
     f_in, f_out = fsizes
-    x = Conv2D(int(f_in/4), (1, 1), strides=(1, 1), padding='same')(input_tensor)
-    x = Conv2DTranspose(int(f_in/4), ksize, strides=(2, 2), padding='same')(x)
+    x = Conv2D(int(f_in/4), (1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal')(input_tensor)
+    x = Conv2DTranspose(int(f_in/4), ksize, strides=(2, 2), padding='same', kernel_initializer='he_normal')(x)
     x.set_shape(x._keras_shape)
-    x = Conv2D(f_out, (1, 1), strides=(1, 1), padding='same')(x)                   
+    x = Conv2D(f_out, (1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal')(x)                   
     return x
 
 def decoder(e1, e2, e3, e4):
@@ -69,25 +69,28 @@ def decoder(e1, e2, e3, e4):
     return d1
 
 def output_block(input_tensor, ksize=(3, 3)):
-    x = Conv2DTranspose(32, ksize, strides=(2, 2), padding='same')(input_tensor)
+    x = Conv2DTranspose(32, ksize, strides=(2, 2), padding='same', kernel_initializer='he_normal')(input_tensor)
     x.set_shape(x._keras_shape)
 
-    x = Conv2D(32, ksize, strides=(1, 1), padding='same')(x)
-    x = Conv2DTranspose(1, (2, 2), strides=(2, 2), padding='same')(x)
+    x = Conv2D(32, ksize, strides=(1, 1), padding='same', kernel_initializer='he_normal')(x)
+    x = Conv2DTranspose(1, (2, 2), strides=(2, 2), padding='same', kernel_initializer='he_normal')(x)
     x.set_shape(x._keras_shape)
     
     return x
 
 def linknet(input_shape, learing_rate, loss):
     input_img = Input(input_shape)
+    depth_input = Input((1,))
+    
     x = init_block(input_img)
 
     e1, e2, e3, e4 = encoder(x)
+    x = Multiply()([x, depth_input])
     x = decoder(e1, e2, e3, e4)
 
     y_pred = output_block(x)
     
-    model = Model(input_img, y_pred)
+    model = Model([input_img, depth_input], y_pred)
     model.compile(loss=loss, optimizer=Adam(learing_rate), metrics=[dice_coef])
     
     return model
