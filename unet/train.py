@@ -23,7 +23,7 @@ K.set_session(sess)
 # In[6]:
 
 
-data_path = '../data/processed-data'
+data_path = '../linknet/data/proccessed-data'
 
 xtrain, xval, ytrain, yval, dtrain, dval, idtrain, idval = get_data(data_path)
 
@@ -33,12 +33,12 @@ xtrain, xval, ytrain, yval, dtrain, dval, idtrain, idval = get_data(data_path)
 
 H, W, C = 256, 256, 1
 
-learning_rate = 1e-2
-BATCH_SIZE = 64
+learning_rate = 3e-5
+BATCH_SIZE = 30
 EPOCHS = 100
 
 filter_sizes = [32, 64, 128, 256]
-bn_fsize = 256
+bn_fsize = 64
 loss = dice_loss
 
 model = unet((H, W, C), filter_sizes, bn_fsize, learning_rate, loss)
@@ -61,7 +61,8 @@ early_stop = EarlyStopping(monitor='val_dice_coef',
                            mode='max')
 m_checkpoint = ModelCheckpoint(monitor='val_dice_coef',
                              filepath='model_weights.hdf5',
-                             save_best_only=True,
+                             save_best_only=False,
+                             verbose=1,
                              mode='max')
 tb = TrainValTensorBoard(write_graph=False)
 callbacks = [lr_plat, early_stop, m_checkpoint, tb]
