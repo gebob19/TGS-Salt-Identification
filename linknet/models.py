@@ -40,11 +40,13 @@ def encode_block(input_tensor, filters, ksize=(3, 3)):
     
     return x
 
-def encoder(input_img):
-    e1 = encode_block(input_img, [64, 64], )
-    e2 = encode_block(e1, [64, 128])
-    e3 = encode_block(e2, [128, 256])
-    e4 = encode_block(e3, [256, 512])
+def encoder(input_img, filter_sizes):
+    f1, f2, f3, f4 = filter_sizes
+    
+    e1 = encode_block(input_img, [f1, f1])
+    e2 = encode_block(e1, [f1, f2])
+    e3 = encode_block(e2, [f2, f3])
+    e4 = encode_block(e3, [f3, f4])
     return [e1, e2, e3, e4]
 
 def decode_block(input_tensor, fsizes, ksize=(3, 3)):
@@ -55,17 +57,19 @@ def decode_block(input_tensor, fsizes, ksize=(3, 3)):
     x = Conv2D(f_out, (1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal')(x)                   
     return x
 
-def decoder(e1, e2, e3, e4):
-    d4 = decode_block(e4, [512, 256])
+def decoder(e1, e2, e3, e4, filter_sizes):
+    f1, f2, f3, f4 = filter_sizes
+    
+    d4 = decode_block(e4, [f4, f3])
     d4 = add([e3, d4])
     
-    d3 = decode_block(d4, [256, 128])
+    d3 = decode_block(d4, [f3, f2])
     d3 = add([e2, d3])
     
-    d2 = decode_block(d3, [128, 64])
+    d2 = decode_block(d3, [f2, f1])
     d2 = add([e1, d2])
     
-    d1 = decode_block(d2, [64, 64])
+    d1 = decode_block(d2, [f1, f1])
     return d1
 
 def output_block(input_tensor, ksize=(3, 3)):
@@ -78,15 +82,15 @@ def output_block(input_tensor, ksize=(3, 3)):
     
     return x
 
-def linknet(input_shape, learing_rate, loss):
+def linknet(input_shape, learing_rate, filter_sizes, loss):
     input_img = Input(input_shape)
     depth_input = Input((1,))
     
     x = init_block(input_img)
 
-    e1, e2, e3, e4 = encoder(x)
+    e1, e2, e3, e4 = encoder(x, filter_sizes)
     x = add([x, depth_input])
-    x = decoder(e1, e2, e3, e4)
+    x = decoder(e1, e2, e3, e4, filter_sizes)
 
     y_pred = output_block(x)
     

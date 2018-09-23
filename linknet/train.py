@@ -36,9 +36,8 @@ EPOCHS = 100
 
 # dim based off the linknet paper
 H, W, C = 256, 256, 1
-
-model = linknet((H, W, C), lr, dice_loss)
-
+filter_sizes = [32, 64, 128, 256]
+model = linknet((H, W, C), lr, filter_sizes, bce_dice_loss)
 
 # https://github.com/keras-team/keras/issues/3386
 def createGenerator( X, I, Y):
