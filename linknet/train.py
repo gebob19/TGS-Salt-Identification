@@ -14,7 +14,7 @@ from keras.preprocessing.image import ImageDataGenerator
 from models import linknet
 import sys
 sys.path.insert(0, '..')
-from losses import dice_loss, bce_logdice_loss, bce_dice_loss, binary_crossentropy
+from losses import dice_loss, bce_logdice_loss, bce_dice_loss, binary_crossentropy, lovasz_dice_loss, lovasz_loss
 from helpers import get_data, TrainValTensorBoard
 
 from keras import backend as K
@@ -29,7 +29,7 @@ data_path = 'data/proccessed-data'
 xtrain, xval, ytrain, yval, dtrain, dval, idtrain, idval = get_data(data_path)
 
 
-lr = 2e-4
+lr = 4e-5
 BATCH_SIZE = 85
 EPOCHS = 100
 
@@ -37,7 +37,7 @@ EPOCHS = 100
 H, W, C = 256, 256, 1
 filter_sizes = [64, 128, 256, 512]
 
-model = linknet((H, W, C), lr, filter_sizes, dice_loss)
+model = linknet((H, W, C), lr, filter_sizes, binary_crossentropy)
 
 
 
@@ -45,18 +45,18 @@ model = linknet((H, W, C), lr, filter_sizes, dice_loss)
 
 
 # define callbacks
-lr_plat = ReduceLROnPlateau(monitor='val_dice_coef',
-                               factor=0.2,
-                               patience=5,
+lr_plat = ReduceLROnPlateau(monitor='val_binary_accuracy',
+                               factor=0.5,
+                               patience=4,
                                verbose=1,
                                min_delta=1e-4,
                                mode='max')
-early_stop = EarlyStopping(monitor='val_dice_coef',
+early_stop = EarlyStopping(monitor='val_binary_accuracy',
                            patience=10,
                            verbose=1,
                            min_delta=1e-4,
                            mode='max')
-m_checkpoint = ModelCheckpoint(monitor='val_dice_coef',
+m_checkpoint = ModelCheckpoint(monitor='val_binary_accuracy',
                              filepath='model_weights.hdf5',
                              save_best_only=True,
                              mode='max')

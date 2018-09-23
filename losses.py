@@ -1,6 +1,7 @@
 # Credit: https://github.com/lyakaap/Kaggle-Carvana-3rd-Place-Solution/blob/master/losses.py
 
 from keras.losses import binary_crossentropy
+import tensorflow as tf
 import keras.backend as K
 
 def dice_loss(y_true, y_pred):
@@ -27,6 +28,20 @@ def bce_logdice_loss(y_true, y_pred):
 
 
 # Credit: https://www.kaggle.com/shaojiaxin/u-net-with-simple-resnet-blocks-v2-new-loss
+
+# code download from: https://github.com/bermanmaxim/LovaszSoftmax
+def lovasz_grad(gt_sorted):
+    """
+    Computes gradient of the Lovasz extension w.r.t sorted errors
+    See Alg. 1 in paper
+    """
+    gts = tf.reduce_sum(gt_sorted)
+    intersection = gts - tf.cumsum(gt_sorted)
+    union = gts + tf.cumsum(1. - gt_sorted)
+    jaccard = 1. - intersection / union
+    jaccard = tf.concat((jaccard[0:1], jaccard[1:] - jaccard[:-1]), 0)
+    return jaccard
+
 
 def lovasz_hinge(logits, labels, per_image=True, ignore=None):
     """
@@ -96,5 +111,8 @@ def lovasz_loss(y_true, y_pred):
     #logits = K.log(y_pred / (1. - y_pred))
     logits = y_pred #Jiaxin
     loss = lovasz_hinge(logits, y_true, per_image = True, ignore = None)
-    return loss
+    return loss 
+
+def lovasz_dice_loss(y_true, y_pred):
+    return dice_loss(y_true, y_pred) + lovasz_loss(y_true, y_pred)
     
