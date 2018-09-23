@@ -11,8 +11,10 @@ import tensorflow as tf
 from keras.callbacks import ReduceLROnPlateau, ModelCheckpoint, EarlyStopping
 from keras.preprocessing.image import ImageDataGenerator
 
-from losses import dice_loss, bce_logdice_loss, bce_dice_loss, binary_crossentropy
 from models import linknet
+import sys
+sys.path.insert(0, '..')
+from losses import dice_loss, bce_logdice_loss, bce_dice_loss, binary_crossentropy
 from helpers import get_data, TrainValTensorBoard
 
 from keras import backend as K
@@ -27,7 +29,7 @@ data_path = 'data/proccessed-data'
 xtrain, xval, ytrain, yval, dtrain, dval, idtrain, idval = get_data(data_path)
 
 
-lr = 2e-3
+lr = 2e-4
 BATCH_SIZE = 85
 EPOCHS = 100
 
@@ -37,26 +39,6 @@ filter_sizes = [64, 128, 256, 512]
 
 model = linknet((H, W, C), lr, filter_sizes, dice_loss)
 
-# # https://github.com/keras-team/keras/issues/3386
-# def createGenerator( X, I, Y):
-#     while True:
-#         # suffled indices    
-#         idx = np.random.permutation(X.shape[0])
-#         # create image generator
-#         datagen = ImageDataGenerator(zoom_range=0,
-#                                      width_shift_range=0.0,
-#                                      height_shift_range=0.0,
-#                                      horizontal_flip=False)
-
-#         batches = datagen.flow( X[idx], Y[idx], batch_size=BATCH_SIZE, shuffle=False)
-#         idx0 = 0
-#         for batch in batches:
-#             idx1 = idx0 + batch[0].shape[0]
-#             yield [batch[0], I[ idx[ idx0:idx1 ] ]], batch[1]
-
-#             idx0 = idx1
-#             if idx1 >= X.shape[0]:
-#                 break
 
 
 # In[54]:

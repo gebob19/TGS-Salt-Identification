@@ -2,11 +2,14 @@ from keras.layers import Input, Conv2D, Activation, BatchNormalization, add, \
                          MaxPool2D, GlobalAveragePooling2D, Dense, \
                          Conv2DTranspose, Cropping2D, Lambda, Multiply, concatenate
 from keras import Model
+from keras.metrics import binary_accuracy
 from keras.optimizers import Adam, RMSprop
 
 from keras.regularizers import l2
- 
-from losses import dice_coef
+
+import sys
+sys.path.insert(0, '..')
+from losses import dice_coef, lovasz_loss
 
 
 def init_block(input_img):
@@ -91,12 +94,12 @@ def linknet(input_shape, learing_rate, filter_sizes, loss):
     x = init_block(input_img)
 
     e1, e2, e3, e4 = encoder(x, filter_sizes)
-#     x = add([x, depth_input])
+    x = add([x, depth_input])
     x = decoder(e1, e2, e3, e4, filter_sizes)
 
     y_pred = output_block(x)
     
     model = Model([input_img, depth_input], y_pred)
-    model.compile(loss=loss, optimizer=Adam(learing_rate), metrics=[dice_coef])
+    model.compile(loss=loss, optimizer=Adam(learing_rate), metrics=[dice_coef, binary_accuracy])
     
     return model
