@@ -1,7 +1,9 @@
 import os 
 import h5py
 import tensorflow as tf
+import numpy as np
 
+from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import TensorBoard
 
 # writing data to tensorboard helper class
@@ -44,15 +46,15 @@ class TrainValTensorBoard(TensorBoard):
         
         
 # https://github.com/keras-team/keras/issues/3386
-def createGenerator( X, I, Y):
+def createGenerator( X, I, Y, BATCH_SIZE):
     while True:
         # suffled indices    
         idx = np.random.permutation(X.shape[0])
         # create image generator
-        datagen = ImageDataGenerator(zoom_range=0,
-                                     width_shift_range=0.0,
-                                     height_shift_range=0.0,
-                                     horizontal_flip=False)
+        datagen = ImageDataGenerator(zoom_range=0.1,
+                                     width_shift_range=0.1,
+                                     height_shift_range=0.1,
+                                     horizontal_flip=True)
 
         batches = datagen.flow( X[idx], Y[idx], batch_size=BATCH_SIZE, shuffle=False)
         idx0 = 0
