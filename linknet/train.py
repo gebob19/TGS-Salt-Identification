@@ -9,13 +9,12 @@ import numpy as np
 import tensorflow as tf
 
 from keras.callbacks import ReduceLROnPlateau, ModelCheckpoint, EarlyStopping
-from keras.preprocessing.image import ImageDataGenerator
 
 from models import linknet
 import sys
 sys.path.insert(0, '..')
 from losses import dice_loss, bce_logdice_loss, bce_dice_loss, binary_crossentropy, lovasz_dice_loss, lovasz_loss
-from helpers import get_data, TrainValTensorBoard
+from helpers import get_data, TrainValTensorBoard, createGenerator
 
 from keras import backend as K
 sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, device_count = {'CPU' : 16, 'GPU' : 1}))
@@ -30,7 +29,7 @@ xtrain, xval, ytrain, yval, dtrain, dval, idtrain, idval = get_data(data_path)
 
 
 lr = 4e-5
-BATCH_SIZE = 85
+BATCH_SIZE = 100
 EPOCHS = 100
 
 # dim based off the linknet paper
@@ -38,27 +37,28 @@ H, W, C = 256, 256, 1
 filter_sizes = [64, 128, 256, 512]
 
 model = linknet((H, W, C), lr, filter_sizes, binary_crossentropy)
-
+model.load_weights('64valdice-notovertrained.hdf5')
 
 
 # In[54]:
 
 
 # define callbacks
-lr_plat = ReduceLROnPlateau(monitor='val_binary_accuracy',
+lr_plat = ReduceLROnPlateau(monitor='val_dice_coef',
                                factor=0.5,
-                               patience=4,
+                               patience=3,
                                verbose=1,
                                min_delta=1e-4,
                                mode='max')
-early_stop = EarlyStopping(monitor='val_binary_accuracy',
+early_stop = EarlyStopping(monitor='val_dice_coef',
                            patience=10,
                            verbose=1,
                            min_delta=1e-4,
                            mode='max')
-m_checkpoint = ModelCheckpoint(monitor='val_binary_accuracy',
+m_checkpoint = ModelCheckpoint(monitor='val_dice_coef',
                              filepath='model_weights.hdf5',
                              save_best_only=True,
+                             verbose=1,
                              mode='max')
 tb = TrainValTensorBoard(write_graph=False)
 callbacks = [lr_plat, early_stop, m_checkpoint, tb]
@@ -67,20 +67,21 @@ callbacks = [lr_plat, early_stop, m_checkpoint, tb]
 # In[55]:
 
 
-# model.fit_generator(generator=createGenerator(xtrain, dtrain, ytrain),
-#                     steps_per_epoch=np.ceil(float(len(xtrain)) / float(BATCH_SIZE)),
-#                     epochs=EPOCHS,
-#                     verbose=1,
-#                     callbacks=callbacks,
-#                     validation_data=([xval, dval], yval), 
-#                     validation_steps=np.ceil(float(len(xval)) / float(BATCH_SIZE)))
-model.fit([xtrain, dtrain], ytrain, batch_size=BATCH_SIZE,
-#         steps_per_epoch=np.ceil(float(len(xtrain)) / float(BATCH_SIZE)),
-        epochs=EPOCHS,
-        verbose=1,
-        callbacks=callbacks,
-        validation_data=([xval, dval], yval))
-#         validation_steps=np.ceil(float(len(xval)) / float(BATCH_SIZE)))
+model.fit_generator(generator=createGenerator(xtrain, dtrain, ytrain, BATCH_SIZE),
+                    steps_per_epoch=np.ceil(float(len(xtrain)) / float(BATCH_SIZE)),
+                    epochs=EPOCHS,
+                    verbose=1,
+                    callbacks=callbacks,
+                    validation_data=([xval, dval], yval), 
+                    validation_steps=np.ceil(float(len(xval)) / float(BATCH_SIZE)))
+
+# model.fit([xtrain, dtrain], ytrain, batch_size=BATCH_SIZE,
+# #         steps_per_epoch=np.ceil(float(len(xtrain)) / float(BATCH_SIZE)),
+#         epochs=EPOCHS,
+#         verbose=1,
+#         callbacks=callbacks,
+#         validation_data=([xval, dval], yval))
+# #         validation_steps=np.ceil(float(len(xval)) / float(BATCH_SIZE)))
 
 
 # In[28]:
