@@ -29,7 +29,7 @@ xtrain, xval, ytrain, yval, dtrain, dval, idtrain, idval = get_data(data_path)
 
 
 lr = 4e-5
-BATCH_SIZE = 100
+BATCH_SIZE = 64
 EPOCHS = 100
 
 # dim based off the linknet paper
@@ -37,11 +37,7 @@ H, W, C = 256, 256, 1
 filter_sizes = [64, 128, 256, 512]
 
 model = linknet((H, W, C), lr, filter_sizes, binary_crossentropy)
-model.load_weights('64valdice-notovertrained.hdf5')
-
-
-# In[54]:
-
+# model.load_weights('64valdice-notovertrained.hdf5')
 
 # define callbacks
 lr_plat = ReduceLROnPlateau(monitor='val_dice_coef',
@@ -63,29 +59,19 @@ m_checkpoint = ModelCheckpoint(monitor='val_dice_coef',
 tb = TrainValTensorBoard(write_graph=False)
 callbacks = [lr_plat, early_stop, m_checkpoint, tb]
 
+# model.fit_generator(generator=createGenerator(xtrain, dtrain, ytrain, BATCH_SIZE),
+#                     steps_per_epoch=np.ceil(float(len(xtrain)) / float(BATCH_SIZE)),
+#                     epochs=EPOCHS,
+#                     verbose=1,
+#                     callbacks=callbacks,
+#                     validation_data=([xval, dval], yval), 
+#                     validation_steps=np.ceil(float(len(xval)) / float(BATCH_SIZE)))
 
-# In[55]:
-
-
-model.fit_generator(generator=createGenerator(xtrain, dtrain, ytrain, BATCH_SIZE),
-                    steps_per_epoch=np.ceil(float(len(xtrain)) / float(BATCH_SIZE)),
-                    epochs=EPOCHS,
-                    verbose=1,
-                    callbacks=callbacks,
-                    validation_data=([xval, dval], yval), 
-                    validation_steps=np.ceil(float(len(xval)) / float(BATCH_SIZE)))
-
-# model.fit([xtrain, dtrain], ytrain, batch_size=BATCH_SIZE,
-# #         steps_per_epoch=np.ceil(float(len(xtrain)) / float(BATCH_SIZE)),
-#         epochs=EPOCHS,
-#         verbose=1,
-#         callbacks=callbacks,
-#         validation_data=([xval, dval], yval))
-# #         validation_steps=np.ceil(float(len(xval)) / float(BATCH_SIZE)))
-
-
-# In[28]:
-
+model.fit([xtrain, dtrain], ytrain, batch_size=BATCH_SIZE,
+        epochs=EPOCHS,
+        verbose=1,
+        callbacks=callbacks,
+        validation_data=([xval, dval], yval))
 
 # !ipython nbconvert --to=python train.ipynb
 
