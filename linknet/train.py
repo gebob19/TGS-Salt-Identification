@@ -34,7 +34,7 @@ EPOCHS = 100
 
 # dim based off the linknet paper
 H, W, C = 256, 256, 1
-filter_sizes = [64, 128, 256, 512]
+filter_sizes = [64, 128, 256, 512, 1024]
 
 model = linknet((H, W, C), lr, filter_sizes, binary_crossentropy)
 # model.load_weights('64valdice-notovertrained.hdf5')
