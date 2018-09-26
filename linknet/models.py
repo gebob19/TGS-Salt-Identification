@@ -6,11 +6,11 @@ from keras.metrics import binary_accuracy
 from keras.optimizers import Adam, RMSprop
 
 from keras.regularizers import l2
-
 import sys
 sys.path.insert(0, '..')
 from losses import dice_coef, lovasz_loss
 
+reg = 1e-7
 
 def init_block(input_img, fsize):
     x = Conv2D(fsize, (7, 7), strides=(2, 2), padding='same', kernel_regularizer=l2(0.))(input_img)
@@ -20,24 +20,24 @@ def init_block(input_img, fsize):
 def encode_block(input_tensor, filters, ksize=(3, 3)):
     f_in, f_out = filters
     
-    x = Conv2D(f_out, (1, 1), strides=(2, 2), padding='same', kernel_regularizer=l2(0.))(input_tensor)
+    x = Conv2D(f_out, (1, 1), strides=(2, 2), padding='same', kernel_regularizer=l2(reg))(input_tensor)
     x = BatchNormalization(axis=3)(x)
     x = Activation('relu')(x)
     
-    x = Conv2D(f_out, ksize, strides=(1, 1), padding='same', kernel_regularizer=l2(0.))(x)
+    x = Conv2D(f_out, ksize, strides=(1, 1), padding='same', kernel_regularizer=l2(reg))(x)
     x = BatchNormalization(axis=3)(x)
     
-    shortcut = Conv2D(f_out, (1, 1), strides=(2, 2), padding='same', kernel_regularizer=l2(0.))(input_tensor)
+    shortcut = Conv2D(f_out, (1, 1), strides=(2, 2), padding='same', kernel_regularizer=l2(reg))(input_tensor)
     shortcut = BatchNormalization(axis=3)(shortcut)
     
     x = add([x, shortcut])
     ec1 = Activation('relu')(x)
     
-    x = Conv2D(f_out, ksize, strides=(1, 1), padding='same', kernel_regularizer=l2(0.))(ec1)
+    x = Conv2D(f_out, ksize, strides=(1, 1), padding='same', kernel_regularizer=l2(reg))(ec1)
     x = BatchNormalization(axis=3)(x)
     x = Activation('relu')(x)
     
-    x = Conv2D(f_out, ksize, strides=(1, 1), padding='same', kernel_regularizer=l2(0.))(x)
+    x = Conv2D(f_out, ksize, strides=(1, 1), padding='same', kernel_regularizer=l2(reg))(x)
     x = BatchNormalization(axis=3)(x)
     
     x = add([x, ec1])
@@ -57,10 +57,10 @@ def encoder(input_img, filter_sizes):
 
 def decode_block(input_tensor, fsizes, ksize=(3, 3)):
     f_in, f_out = fsizes
-    x = Conv2D(int(f_in/4), (1, 1), strides=(1, 1), padding='same', kernel_regularizer=l2(0.))(input_tensor)
-    x = Conv2DTranspose(int(f_in/4), ksize, strides=(2, 2), padding='same', kernel_regularizer=l2(0.))(x)
+    x = Conv2D(int(f_in/4), (1, 1), strides=(1, 1), padding='same', kernel_regularizer=l2(reg), activation='relu')(input_tensor)
+    x = Conv2DTranspose(int(f_in/4), ksize, strides=(2, 2), padding='same', kernel_regularizer=l2(reg), activation='relu')(x)
     x.set_shape(x._keras_shape)
-    x = Conv2D(f_out, (1, 1), strides=(1, 1), padding='same', kernel_regularizer=l2(0.))(x)                   
+    x = Conv2D(f_out, (1, 1), strides=(1, 1), padding='same', kernel_regularizer=l2(reg), activation='relu')(x)                   
     return x
 
 def decoder(e1, e2, e3, e4, e5, filter_sizes):
@@ -82,22 +82,27 @@ def decoder(e1, e2, e3, e4, e5, filter_sizes):
     return d1
 
 def output_block(input_tensor, ksize=(3, 3)):
-    x = Conv2DTranspose(32, ksize, strides=(2, 2), padding='same', kernel_regularizer=l2(0.))(input_tensor)
+    x = Conv2DTranspose(32, ksize, strides=(2, 2), padding='same', kernel_regularizer=l2(reg), activation='relu')(input_tensor)
     x.set_shape(x._keras_shape)
 
-    x = Conv2D(32, ksize, strides=(1, 1), padding='same', kernel_regularizer=l2(0.))(x)
-    x = Conv2DTranspose(1, (2, 2), strides=(2, 2), padding='same', kernel_regularizer=l2(0.))(x)
+    x = Conv2D(32, ksize, strides=(1, 1), padding='same', kernel_regularizer=l2(reg), activation='relu')(x)
+    x = Conv2DTranspose(1, (2, 2), strides=(2, 2), padding='same', kernel_regularizer=l2(reg), activation='relu')(x)
     x.set_shape(x._keras_shape)
     
     return x
 
-def bottle_neck(input_tensor, fsize, ksize=(1, 1)):
-    b1 = Conv2D(fsize, ksize, strides=(1, 1), padding='same', kernel_regularizer=l2(0.))(input_tensor)
-    b2 = Conv2D(fsize, ksize, strides=(1, 1), padding='same', kernel_regularizer=l2(0.))(b1)
-    b3 = Conv2D(fsize, ksize, strides=(1, 1), padding='same', kernel_regularizer=l2(0.))(b2)
-    b4 = Conv2D(fsize, ksize, strides=(1, 1), padding='same', kernel_regularizer=l2(0.))(b3)
-    return add([b1, b2, b3, b4])
+def bottle_neck(input_tensor, depth_input, fsize, ksize=(1, 1)):
+    x = Conv2D(fsize, ksize, strides=(1, 1), padding='same', kernel_regularizer=l2(reg), activation='relu')(input_tensor)
+    x = Conv2D(fsize, ksize, strides=(1, 1), padding='same', kernel_regularizer=l2(reg), activation='relu')(x)
+    res1 = add([input_tensor, x])
     
+    x = Conv2D(fsize, ksize, strides=(1, 1), padding='same', kernel_regularizer=l2(reg), activation='relu')(res1)
+    x = Conv2D(fsize, ksize, strides=(1, 1), padding='same', kernel_regularizer=l2(reg), activation='relu')(x)
+    x = add([input_tensor, res1])
+    x = add([depth_input, x])
+    x = Activation('relu')(x)
+    
+    return x
 
 def linknet(input_shape, learing_rate, filter_sizes, loss):
     input_img = Input(input_shape)
@@ -106,9 +111,8 @@ def linknet(input_shape, learing_rate, filter_sizes, loss):
     x = init_block(input_img, filter_sizes[0])
 
     e1, e2, e3, e4, e5 = encoder(x, filter_sizes)
-    x = add([e5, depth_input])
-    x = bottle_neck(x, filter_sizes[-1])
-    x = decoder(e1, e2, e3, e4, e5, filter_sizes)
+    x = bottle_neck(e5, depth_input, filter_sizes[-1])
+    x = decoder(e1, e2, e3, e4, x, filter_sizes)
 
     y_pred = output_block(x)
     
