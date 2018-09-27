@@ -10,52 +10,62 @@ import sys
 sys.path.insert(0, '..')
 from losses import dice_coef
 
-def decoder(x, out_layers, fsizes, kernel_size=3, strides=1):
-    for i in range(len(fsizes)-1, -1, -1):
-        x = Conv2DTranspose(fsizes[i], (3, 3), strides=(2, 2), padding="same")(x)
-        x = concatenate([out_layers[i], x])
-        x = Dropout(0.5)(x)
-        x = Conv2D(fsizes[i], kernel_size=kernel_size, strides=strides, 
-                   activation='relu', padding='same')(x)
-        x = Conv2D(fsizes[i], kernel_size=kernel_size, strides=strides, 
-                   activation='relu', padding='same')(x)
+def decoder(x, concat_layers, filter_sizes, kernel_size=3, strides=1):
+    f1, f2, f3, f4 = filter_sizes
+    e1, e2, e3, e4 = concat_layers
+    
+    x = decoder_block(x, f1, e1, p_drop=0.5)
+    x = decoder_block(x, f2, e2, p_drop=0.5)
+    x = decoder_block(x, f3, e3, p_drop=0.25)
+    x = decoder_block(x, f4, e4, p_drop=0.25)
+    
     return x
 
-def encoder_block(x, fs):
+def decoder_block(x, fs, concat_layer, p_drop):
+    x = Conv2DTranspose(fs, (3, 3), strides=(2, 2), padding="same")(x)
+    x = concatenate([concat_layer, x])
+    x = Dropout(p_drop)(x)
+    x = Conv2D(fs, kernel_size=kernel_size, strides=strides, 
+               activation='relu', padding='same')(x)
+    x = Conv2D(fs, kernel_size=kernel_size, strides=strides, 
+               activation='relu', padding='same')(x)
+    return x
+
+def encoder_block(x, fs, pdrop):
     x = Conv2D(fs, (3, 3), activation='relu', padding='same')(x)
     x = Conv2D(fs, (3, 3), activation='relu', padding='same')(x)
     pool = MaxPooling2D((2, 2))(x)
-    pool = Dropout(0.5)(pool)
+    pool = Dropout(pdrop)(pool)
     
     return x, pool
 
 def encoder(x, filter_sizes):
     f1, f2, f3, f4 = filter_sizes
     
-    e1, x = encoder_block(x, f1)
-    e2, x = encoder_block(x, f2)
-    e3, x = encoder_block(x, f3)
-    e4, x = encoder_block(x, f4)
+    e1, x = encoder_block(x, f1, pdrop=0.25)
+    e2, x = encoder_block(x, f2, pdrop=0.25)
+    e3, x = encoder_block(x, f3, pdrop=0.5)
+    e4, x = encoder_block(x, f4, pdrop=0.5)
     return x, [e1, e2, e3, e4]
 
 def bottle_neck(x, fs, depth):
-    x = Conv2D(fs, (3, 3), activation='relu', padding='same')(x)
-    x = Conv2D(fs, (3, 3), activation='relu', padding='same')(x)
-    x = add([x, depth])
-    x = Dropout(0.5)(x)
-    x = Conv2D(fs, (3, 3), activation='relu', padding='same')(x)
-    x = Conv2D(fs, (3, 3), activation='relu', padding='same')(x)
-    x = add([x, depth])
+    b1 = Conv2D(fs, (1, 1), activation='relu', padding='same')(x)
+    b2 = Conv2D(fs, (1, 1), activation='relu', padding='same')(b1)
+    b3 = Conv2D(fs, (1, 1), activation='relu', padding='same')(b2)
+    b4 = Conv2D(fs, (1, 1), activation='relu', padding='same')(b3)
+    
+    x = add([b1, b2, b3, b4])
+    x = Multiply
     x = Dropout(0.5)(x)
     return x
 
 
-def unet(input_shape, filter_sizes, bn_fsize, learning_rate, loss):
+def unet(input_shape, filter_sizes, learning_rate, loss):
     input_img = Input(input_shape)
     input_depth = Input((1,))
 
     x, concat_layers = encoder(input_img, filter_sizes)
-    x = bottle_neck(x, bn_fsize, input_depth)
+    x = bottle_neck(x, filter_sizes[-1], input_depth)
     x = decoder(x, concat_layers, filter_sizes)
     x = Conv2D(1, (1, 1), activation='sigmoid')(x)
 

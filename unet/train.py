@@ -24,7 +24,6 @@ K.set_session(sess)
 
 
 data_path = '../linknet/data/proccessed-data'
-
 xtrain, xval, ytrain, yval, dtrain, dval, idtrain, idval = get_data(data_path)
 
 
@@ -33,28 +32,26 @@ xtrain, xval, ytrain, yval, dtrain, dval, idtrain, idval = get_data(data_path)
 
 H, W, C = 256, 256, 1
 
-learning_rate = 3e-5
-BATCH_SIZE = 64
+learning_rate = 1e-2
+BATCH_SIZE = 32
 EPOCHS = 100
 
 filter_sizes = [128, 256, 512, 1024]
-bn_fsize = 1024
 loss = binary_crossentropy
 
-model = unet((H, W, C), filter_sizes, bn_fsize, learning_rate, loss)
+model = unet((H, W, C), filter_sizes, learning_rate, loss)
 
 
 # In[82]:
 
 
 # define callbacks
-lr_plat = ReduceLROnPlateau(monitor='val_dice_coef',
-                               factor=0.2,
-                               patience=5,
-                               verbose=1,
-                               min_delta=1e-4,
-                               mode='max')
-early_stop = EarlyStopping(monitor='val_dice_coef',
+lr_plat = ReduceLROnPlateau(factor=0.2,
+                           patience=5,
+                           verbose=1,
+                           min_lr=1e-7,
+                           mode='max')
+early_stop = EarlyStopping(monitor='val_loss',
                            patience=10,
                            verbose=1,
                            min_delta=1e-4,
@@ -92,7 +89,6 @@ model.fit_generator(generator=createGenerator(xtrain, dtrain, ytrain),
                     callbacks=callbacks,
                     validation_data=([xval, dval], yval), 
                     validation_steps=np.ceil(float(len(xval)) / float(BATCH_SIZE)))
-
 
 # In[ ]:
 
