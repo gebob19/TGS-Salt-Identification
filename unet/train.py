@@ -23,7 +23,7 @@ K.set_session(sess)
 # In[6]:
 
 
-data_path = '../linknet/data/proccessed-data'
+data_path = '../data/processed-data'
 xtrain, xval, ytrain, yval, dtrain, dval, idtrain, idval = get_data(data_path)
 
 
@@ -32,15 +32,15 @@ xtrain, xval, ytrain, yval, dtrain, dval, idtrain, idval = get_data(data_path)
 
 H, W, C = 256, 256, 1
 
-learning_rate = 1e-2
-BATCH_SIZE = 32
+learning_rate = 4e-5
+BATCH_SIZE = 5
 EPOCHS = 100
 
-filter_sizes = [128, 256, 512, 1024]
+filter_sizes = [16, 32, 64, 128]#, 256]#512]#, 1024]
 loss = binary_crossentropy
 
 model = unet((H, W, C), filter_sizes, learning_rate, loss)
-
+model.load_weights('model_weights.hdf5')
 
 # In[82]:
 
@@ -82,7 +82,7 @@ callbacks = [lr_plat, early_stop, m_checkpoint, tb]
 
 
 # fit with depth dimension
-model.fit_generator(generator=createGenerator(xtrain, dtrain, ytrain),
+model.fit_generator(generator=createGenerator(xtrain, dtrain, ytrain, BATCH_SIZE),
                     steps_per_epoch=np.ceil(float(len(xtrain)) / float(BATCH_SIZE)),
                     epochs=EPOCHS,
                     verbose=1,

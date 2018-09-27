@@ -14,20 +14,20 @@ def decoder(x, concat_layers, filter_sizes, kernel_size=3, strides=1):
     f1, f2, f3, f4 = filter_sizes
     e1, e2, e3, e4 = concat_layers
     
-    x = decoder_block(x, f1, e1, p_drop=0.5)
-    x = decoder_block(x, f2, e2, p_drop=0.5)
-    x = decoder_block(x, f3, e3, p_drop=0.25)
-    x = decoder_block(x, f4, e4, p_drop=0.25)
+    x = decoder_block(x, f1, e4, p_drop=0.5)
+    x = decoder_block(x, f2, e3, p_drop=0.5)
+    x = decoder_block(x, f3, e2, p_drop=0.25)
+    x = decoder_block(x, f4, e1, p_drop=0.25)
     
     return x
 
-def decoder_block(x, fs, concat_layer, p_drop):
+def decoder_block(x, fs, concat_layer, p_drop, kernel_size=(3, 3)):
     x = Conv2DTranspose(fs, (3, 3), strides=(2, 2), padding="same")(x)
     x = concatenate([concat_layer, x])
     x = Dropout(p_drop)(x)
-    x = Conv2D(fs, kernel_size=kernel_size, strides=strides, 
+    x = Conv2D(fs, kernel_size=kernel_size, strides=(1, 1), 
                activation='relu', padding='same')(x)
-    x = Conv2D(fs, kernel_size=kernel_size, strides=strides, 
+    x = Conv2D(fs, kernel_size=kernel_size, strides=(1, 1), 
                activation='relu', padding='same')(x)
     return x
 
@@ -55,7 +55,6 @@ def bottle_neck(x, fs, depth):
     b4 = Conv2D(fs, (1, 1), activation='relu', padding='same')(b3)
     
     x = add([b1, b2, b3, b4])
-    x = Multiply
     x = Dropout(0.5)(x)
     return x
 
