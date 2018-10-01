@@ -17,7 +17,7 @@ from helpers import TrainValTensorBoard, get_data, createGenerator
 from losses import dice_loss, bce_dice_loss, bce_logdice_loss, binary_crossentropy
 
 from keras import backend as K
-sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, device_count = {'CPU' : 16, 'GPU' : 1}))
+sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, device_count = {'CPU' : 24, 'GPU' : 2}))
 K.set_session(sess)
 
 # In[6]:
@@ -32,21 +32,23 @@ xtrain, xval, ytrain, yval, dtrain, dval, idtrain, idval = get_data(data_path)
 
 H, W, C = 256, 256, 1
 
-learning_rate = 4e-5
-BATCH_SIZE = 5
+learning_rate = 6e-4
+BATCH_SIZE = 35
 EPOCHS = 100
+data_aug = False
 
-filter_sizes = [16, 32, 64, 128]#, 256]#512]#, 1024]
+filter_sizes = [16, 32, 64, 128]#, 256]#, 512]#, 1024]
 loss = binary_crossentropy
 
 model = unet((H, W, C), filter_sizes, learning_rate, loss)
-model.load_weights('model_weights.hdf5')
+model.load_weights('latest_model_weights.hdf5')
 
 # In[82]:
 
 
 # define callbacks
-lr_plat = ReduceLROnPlateau(factor=0.2,
+lr_plat = ReduceLROnPlateau(monitor='val_loss',
+                           factor=0.2,
                            patience=5,
                            verbose=1,
                            min_lr=1e-7,
@@ -56,39 +58,39 @@ early_stop = EarlyStopping(monitor='val_loss',
                            verbose=1,
                            min_delta=1e-4,
                            mode='max')
-m_checkpoint = ModelCheckpoint(monitor='val_dice_coef',
-                             filepath='model_weights.hdf5',
+
+m_checkpoint = ModelCheckpoint(filepath='latest_model_weights.hdf5',
                              save_best_only=False,
+                             verbose=1)
+
+bestm_checkpoint = ModelCheckpoint(monitor='val_dice_coef',
+                             filepath='best_model_weights.hdf5',
+                             save_best_only=True,
                              verbose=1,
                              mode='max')
+
 tb = TrainValTensorBoard(write_graph=False)
-callbacks = [lr_plat, early_stop, m_checkpoint, tb]
-
-
-# In[83]:
-
-
-# # attempt to over train model first => evaulate its capacity
-# model.fit([xtrain, dtrain], ytrain, batch_size=BATCH_SIZE,
-# #         steps_per_epoch=np.ceil(float(len(xtrain)) / float(BATCH_SIZE)),
-#         epochs=EPOCHS,
-#         verbose=1,
-#         callbacks=callbacks,
-#         validation_data=([xval, dval], yval))
-# #         validation_steps=np.ceil(float(len(xval)) / float(BATCH_SIZE)))
-
+callbacks = [lr_plat, early_stop, m_checkpoint, bestm_checkpoint, tb]
 
 # In[ ]:
 
 
-# fit with depth dimension
-model.fit_generator(generator=createGenerator(xtrain, dtrain, ytrain, BATCH_SIZE),
-                    steps_per_epoch=np.ceil(float(len(xtrain)) / float(BATCH_SIZE)),
-                    epochs=EPOCHS,
-                    verbose=1,
-                    callbacks=callbacks,
-                    validation_data=([xval, dval], yval), 
-                    validation_steps=np.ceil(float(len(xval)) / float(BATCH_SIZE)))
+# # # fit with depth dimension
+if data_aug:
+    model.fit_generator(generator=createGenerator(xtrain, dtrain, ytrain, BATCH_SIZE),
+                        steps_per_epoch=np.ceil(float(len(xtrain)) / float(BATCH_SIZE)),
+                        epochs=EPOCHS,
+                        verbose=1,
+                        callbacks=callbacks,
+                        validation_data=([xval, dval], yval), 
+                        validation_steps=np.ceil(float(len(xval)) / float(BATCH_SIZE)))
+else:
+    model.fit([xtrain, dtrain], ytrain, batch_size=BATCH_SIZE,
+        epochs=EPOCHS,
+        verbose=1,
+        callbacks=callbacks,
+        validation_data=([xval, dval], yval))
+
 
 # In[ ]:
 
