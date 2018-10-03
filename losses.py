@@ -27,6 +27,25 @@ def bce_logdice_loss(y_true, y_pred):
     return binary_crossentropy(y_true, y_pred) - K.log(1. - dice_loss(y_true, y_pred))
 
 
+def get_iou_vector(A, B):
+    batch_size = A.shape[0]
+    metric = []
+    for batch in range(batch_size):
+        t, p = A[batch]>0, B[batch]>0
+        intersection = np.logical_and(t, p)
+        union = np.logical_or(t, p)
+        iou = (np.sum(intersection > 0) + 1e-10 )/ (np.sum(union > 0) + 1e-10)
+        thresholds = np.arange(0.5, 1, 0.05)
+        s = []
+        for thresh in thresholds:
+            s.append(iou > thresh)
+        metric.append(np.mean(s))
+
+    return np.mean(metric)
+
+def iou(label, pred):
+    return tf.py_func(get_iou_vector, [label, pred>0.5], tf.float64)
+
 # Credit: https://www.kaggle.com/shaojiaxin/u-net-with-simple-resnet-blocks-v2-new-loss
 
 # code download from: https://github.com/bermanmaxim/LovaszSoftmax
