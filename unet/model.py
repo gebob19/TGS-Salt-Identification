@@ -5,6 +5,7 @@ from keras import Model
 from keras.optimizers import Adam, RMSprop
 from keras.metrics import binary_accuracy
 
+from keras.utils import multi_gpu_model
 from keras.regularizers import l2
 import sys
 sys.path.insert(0, '..')
@@ -69,6 +70,7 @@ def unet(input_shape, filter_sizes, learning_rate, loss):
     x = Conv2D(1, (1, 1), activation='sigmoid')(x)
 
     model = Model([input_img, input_depth], x)
-    model.compile(loss=loss, optimizer=Adam(learning_rate), metrics=[dice_coef, binary_accuracy])
-    return model
+    parallel_model = multi_gpu_model(model, gpus=2)
+    parallel_model.compile(loss=loss, optimizer=RMSprop(learning_rate), metrics=[binary_accuracy, dice_coef])
+    return parallel_model
     
