@@ -29,6 +29,7 @@ H, W, C = 101, 101, 1
 
 BATCH_SIZE = 32
 EPOCHS = 100
+data_aug = False
 
 start_neuron = 16
 learning_rate = 1e-2
@@ -72,11 +73,23 @@ callbacks = [lr_plat, early_stop, m_checkpoint, tb]
 # In[46]:
 
 
-model.fit(xtrain, ytrain, batch_size=BATCH_SIZE,
-          epochs=EPOCHS,
-          verbose=1,
-          callbacks=callbacks,
-          validation_data=(xval, yval))
+if data_aug:
+    datagen = ImageDataGenerator(zoom_range=0.1,
+                                     width_shift_range=0.1,
+                                     height_shift_range=0.1,
+                                     horizontal_flip=True)
+    model.fit_generator(datagen.flow(xtrain, ytrain, batch_size=BATCH_SIZE),                                             steps_per_epoch=np.ceil(float(len(xtrain)) / float(BATCH_SIZE)),
+                        epochs=EPOCHS,
+                        verbose=1,
+                        callbacks=callbacks,
+                        validation_data=(xval, yval),
+                        validation_steps=np.ceil(float(len(xval)) / float(BATCH_SIZE)))
+else:
+    model.fit(xtrain, ytrain, batch_size=BATCH_SIZE,
+              epochs=EPOCHS,
+              verbose=1,
+              callbacks=callbacks,
+              validation_data=(xval, yval))
 
 
 # In[ ]:
