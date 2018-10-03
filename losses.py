@@ -3,6 +3,7 @@
 from keras.losses import binary_crossentropy
 import tensorflow as tf
 import keras.backend as K
+import numpy as np
 
 def dice_loss(y_true, y_pred):
     smooth = 1.
