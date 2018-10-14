@@ -7,12 +7,13 @@ from losses import dice_loss, binary_crossentropy, bce_dice_loss
 from keras.callbacks import ReduceLROnPlateau, ModelCheckpoint, EarlyStopping
 from keras.preprocessing.image import ImageDataGenerator
 import numpy as np
+import tensorflow as tf 
 
 data_path = '../data/processed-data'
 
 # 224 x 224 x 3
 xtrain, xval, ytrain, yval, dtrain, dval, idtrain, idval = get_data(data_path)
-
+print('data extracted...')
 tf.reset_default_graph()
 
 BATCH_SIZE = 5
@@ -24,6 +25,7 @@ loss = binary_crossentropy
 
 
 model = unet(gpus=2, freeze=True)
+print('model built...')
 
 lr_plat = ReduceLROnPlateau(monitor='val_iou',
                                factor=0.2,

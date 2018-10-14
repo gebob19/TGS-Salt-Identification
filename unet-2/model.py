@@ -83,7 +83,7 @@ def crop_and_concat(x1,x2):
     x1_crop = Lambda(tf.slice, arguments={'begin':offsets, 'size':size}, output_shape=x2._keras_shape[1:])(x1)
     return concatenate([x1_crop, x2])
 
-def unet(gpus=2, freeze):
+def unet(gpus, freeze):
     inputs, concat_layers, encode_out = ResNetEncode((224, 224, 3), freeze=freeze)
     x = decoder_block(encode_out, concat_layers[-1], 2048, 0.5)
     x = decoder_block(x, concat_layers[-2], 1024, 0.5)
