@@ -28,7 +28,7 @@ def ResNetEncode(input_shape, freeze=False):
             
     # extract concat layers (based off keras source code)
     concat_layers = []
-    concat_layers_names = ['add_3', 'add_7', 'add_10', 'add_13', 'add_16']
+    concat_layers_names = ['add_3', 'add_7', 'add_13']
 
     for ln in concat_layers_names:
         layer_out = encoder.get_layer(ln).output
@@ -65,7 +65,8 @@ def residual_block(input_tensor, fs, batch_norm=False):
 def decoder_block(x, encode, fs, pdrop, padding='same'):
     x = Conv2DTranspose(fs, (3, 3), strides=(2, 2), padding=padding, kernel_regularizer=l2(reg))(x)
     x.set_shape(x._keras_shape)
-    x = crop_and_concat(encode, x)
+    if encode:
+        x = crop_and_concat(encode, x)
     x = Dropout(pdrop)(x)
     
     x = Conv2D(fs, (3, 3), activation=None, padding='same', kernel_regularizer=l2(reg))(x)
@@ -83,13 +84,12 @@ def crop_and_concat(x1,x2):
     x1_crop = Lambda(tf.slice, arguments={'begin':offsets, 'size':size}, output_shape=x2._keras_shape[1:])(x1)
     return concatenate([x1_crop, x2])
 
-def unet(gpus, freeze):
+def unet(loss, learning_rate, gpus, freeze):
     inputs, concat_layers, encode_out = ResNetEncode((224, 224, 3), freeze=freeze)
-    x = decoder_block(encode_out, concat_layers[-1], 2048, 0.5)
-    x = decoder_block(x, concat_layers[-2], 1024, 0.5)
-    x = decoder_block(x, concat_layers[-3], 512, 0.5)
-    x = decoder_block(x, concat_layers[-4], 256, 0.5)
-    x = decoder_block(x, concat_layers[-5], 128, 0.)
+    x = decoder_block(x, concat_layers[-1], 1024, 0.5)
+    x = decoder_block(x, concat_layers[-2], 512, 0.5)
+    x = decoder_block(x, concat_layers[-3], 256, 0.5)
+    x = decoder_block(x, None, 128, 0.)
     y_pred = Conv2D(1, (1,1), padding="same", activation='sigmoid', kernel_regularizer=l2(reg))(x)
     model = Model(inputs, y_pred)
     

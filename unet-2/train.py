@@ -13,7 +13,7 @@ data_path = '../data/processed-data'
 
 # 224 x 224 x 3
 xtrain, xval, ytrain, yval, dtrain, dval, idtrain, idval = get_data(data_path)
-print('data extracted...')
+
 tf.reset_default_graph()
 
 BATCH_SIZE = 5
@@ -24,8 +24,8 @@ learning_rate = 1e-3
 loss = binary_crossentropy
 
 
-model = unet(gpus=2, freeze=True)
-print('model built...')
+model = unet(loss, learning_rate, gpus=2, freeze=True)
+
 
 lr_plat = ReduceLROnPlateau(monitor='val_iou',
                                factor=0.2,
