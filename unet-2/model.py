@@ -23,7 +23,7 @@ def freeze_layers(layers):
         layer.trainable = False
         
 def ResNetEncode(input_shape, freeze=False):
-    encoder = ResNet50(weights='imagenet', include_top=False,
+    encoder = ResNet50(weights=None, include_top=False,
                    input_shape=input_shape)
             
     # extract concat layers (based off keras source code)
@@ -37,7 +37,7 @@ def ResNetEncode(input_shape, freeze=False):
     # freeze model layers
     if freeze: freeze_layers(encoder.layers)
         
-    return encoder.inputs, concat_layers, encoder.outputs[-1]
+    return encoder.inputs, concat_layers, encoder.outputs[-1], encoder.layers
 
 def batchnorm_relu(x):
     x = BatchNormalization()(x)
@@ -62,11 +62,14 @@ def residual_block(input_tensor, fs, batch_norm=False):
         x = batchnorm_relu(x)
     return x
 
-def decoder_block(x, encode, fs, pdrop, padding='same'):
+def decoder_block(x, encode, fs, pdrop, pad=False, padding='same'):
     x = Conv2DTranspose(fs, (3, 3), strides=(2, 2), padding=padding, kernel_regularizer=l2(reg))(x)
     x.set_shape(x._keras_shape)
-    if encode:
-        x = crop_and_concat(encode, x)
+    
+    if encode is not None:
+        if pad: 
+            encode = Lambda(keras.backend.spatial_2d_padding, arguments={'padding':((1, 0), (1, 0)), 'data_format':"channels_last"}, output_shape=x._keras_shape[1:])(encode)
+        x = concatenate([encode, x])
     x = Dropout(pdrop)(x)
     
     x = Conv2D(fs, (3, 3), activation=None, padding='same', kernel_regularizer=l2(reg))(x)
@@ -74,22 +77,25 @@ def decoder_block(x, encode, fs, pdrop, padding='same'):
     x = residual_block(x, fs, batch_norm=True)
     return x
 
-def crop_and_concat(x1,x2):
-    x1_shape = tf.shape(x1)
-    x2_shape = tf.shape(x2)
-    # offsets for the top left corner of the crop
-    offsets = [0, (x1_shape[1] - x2_shape[1]) // 2, (x1_shape[2] - x2_shape[2]) // 2, 0]
-    size = [-1, x2_shape[1], x2_shape[2], -1]
+# def crop_and_concat(x1,x2):
+#     x1_shape = tf.shape(x1)
+#     x2_shape = tf.shape(x2)
+
+#     # offsets for the top left corner of the crop
+#     offsets = [0, (x1_shape[1] - x2_shape[1]) // 2, (x1_shape[2] - x2_shape[2]) // 2, 0]
+#     size = [-1, x2_shape[1], x2_shape[2], -1]
     
-    x1_crop = Lambda(tf.slice, arguments={'begin':offsets, 'size':size}, output_shape=x2._keras_shape[1:])(x1)
-    return concatenate([x1_crop, x2])
+#     x1_crop = Lambda(tf.slice, arguments={'begin':offsets, 'size':size}, output_shape=x2._keras_shape[1:])(x1)
+#     return concatenate([x1_crop, x2])
 
 def unet(loss, learning_rate, gpus, freeze):
-    inputs, concat_layers, encode_out = ResNetEncode((224, 224, 3), freeze=freeze)
-    x = decoder_block(x, concat_layers[-1], 1024, 0.5)
+    
+    inputs, concat_layers, encode_out, unfreeze_layers = ResNetEncode((224, 224, 3), freeze=freeze)
+    x = decoder_block(encode_out, concat_layers[-1], 1024, 0.5)
     x = decoder_block(x, concat_layers[-2], 512, 0.5)
-    x = decoder_block(x, concat_layers[-3], 256, 0.5)
+    x = decoder_block(x, concat_layers[-3], 256, 0.5, pad=True)
     x = decoder_block(x, None, 128, 0.)
+    x = decoder_block(x, None, 64, 0.)
     y_pred = Conv2D(1, (1,1), padding="same", activation='sigmoid', kernel_regularizer=l2(reg))(x)
     model = Model(inputs, y_pred)
     
@@ -98,7 +104,7 @@ def unet(loss, learning_rate, gpus, freeze):
         
     model.compile(loss=loss, optimizer=Adam(learning_rate), 
                   metrics=[binary_accuracy, iou])
-    return model
+    return model, unfreeze_layers
     
     
     
